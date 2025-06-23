@@ -1,0 +1,197 @@
+# 抖音店铺管理系统 - Apache配置文件
+# 适用于Kangle和Apache服务器
+
+# 开启重写引擎
+RewriteEngine On
+
+# ============ 安全设置 ============
+
+# 防止访问敏感文件
+<Files ~ "^(config\.php|install\.lock)$">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# 防止访问.htaccess本身
+<Files .htaccess>
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# 防止访问PHP配置文件
+<Files "*.ini">
+    Order Allow,Deny
+    Deny from all
+</Files>
+
+# 防止目录浏览
+Options -Indexes
+
+# 防止访问备份文件
+<FilesMatch "\.(bak|backup|old|tmp|log)$">
+    Order Allow,Deny
+    Deny from all
+</FilesMatch>
+
+# ============ 性能优化 ============
+
+# 开启压缩（如果服务器支持）
+<IfModule mod_deflate.c>
+    AddOutputFilterByType DEFLATE text/html text/plain text/xml text/css text/javascript application/javascript application/json
+</IfModule>
+
+# 设置缓存策略
+<IfModule mod_expires.c>
+    ExpiresActive On
+    
+    # CSS和JS文件缓存30天
+    ExpiresByType text/css "access plus 30 days"
+    ExpiresByType application/javascript "access plus 30 days"
+    ExpiresByType text/javascript "access plus 30 days"
+    
+    # 图片文件缓存7天
+    ExpiresByType image/png "access plus 7 days"
+    ExpiresByType image/jpg "access plus 7 days"
+    ExpiresByType image/jpeg "access plus 7 days"
+    ExpiresByType image/gif "access plus 7 days"
+    ExpiresByType image/ico "access plus 7 days"
+    
+    # HTML文件不缓存
+    ExpiresByType text/html "access plus 0 seconds"
+</IfModule>
+
+# ============ URL重写规则 ============
+
+# 重定向所有请求到index.php（如果文件不存在）
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_URI} !^/(api|assets|install\.php)
+RewriteRule ^(.*)$ index.php [QSA,L]
+
+# API路由处理
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+
+# ============ 安全头设置 ============
+
+# 防止XSS攻击
+<IfModule mod_headers.c>
+    Header always set X-Content-Type-Options nosniff
+    Header always set X-Frame-Options DENY
+    Header always set X-XSS-Protection "1; mode=block"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+    
+    # 仅在HTTPS环境下设置HSTS
+    # Header always set Strict-Transport-Security "max-age=31536000; includeSubDomains" env=HTTPS
+</IfModule>
+
+# ============ 错误页面 ============
+
+# 自定义错误页面（可选）
+ErrorDocument 403 /index.php?error=403
+ErrorDocument 404 /index.php?error=404
+ErrorDocument 500 /index.php?error=500
+
+# ============ 上传限制 ============
+
+# 限制上传文件大小（如果服务器允许）
+<IfModule mod_php.c>
+    php_value upload_max_filesize 10M
+    php_value post_max_size 10M
+    php_value max_execution_time 300
+    php_value memory_limit 256M
+</IfModule>
+
+# ============ 兼容性设置 ============
+
+# 设置默认字符集
+AddDefaultCharset UTF-8
+
+# 防止某些主机的文件权限问题
+<IfModule mod_suphp.c>
+    suPHP_ConfigPath /home/username/public_html
+</IfModule>
+
+# ============ 特殊目录保护 ============
+
+# 保护app目录
+<Directory "app">
+    Order Allow,Deny
+    Deny from all
+</Directory>
+
+# 允许访问assets目录
+<Directory "assets">
+    Order Allow,Deny
+    Allow from all
+</Directory>
+
+# 允许访问api目录
+<Directory "api">
+    Order Allow,Deny
+    Allow from all
+</Directory>
+
+# 允许访问views目录（如果直接访问）
+<Directory "views">
+    Order Allow,Deny
+    Deny from all
+</Directory>
+
+# ============ MIME类型设置 ============
+
+<IfModule mod_mime.c>
+    # JavaScript
+    AddType application/javascript .js
+    AddType text/javascript .js
+    
+    # CSS
+    AddType text/css .css
+    
+    # JSON
+    AddType application/json .json
+    
+    # 字体文件
+    AddType application/vnd.ms-fontobject .eot
+    AddType font/truetype .ttf
+    AddType application/x-font-woff .woff
+    AddType font/woff2 .woff2
+</IfModule>
+
+# ============ 条件性规则 ============
+
+# 如果是开发环境，显示错误
+<IfModule mod_env.c>
+    # 生产环境请删除或注释以下行
+    # SetEnv PHP_DISPLAY_ERRORS On
+    # SetEnv PHP_ERROR_REPORTING E_ALL
+</IfModule>
+
+# ============ 针对Kangle服务器的特殊设置 ============
+
+# Kangle服务器通常支持以下设置
+<IfModule mod_rewrite.c>
+    # 确保重写规则在Kangle上正常工作
+    RewriteBase /
+    
+    # 处理POST请求到API
+    RewriteCond %{REQUEST_METHOD} ^POST$
+    RewriteCond %{REQUEST_URI} ^/api/
+    RewriteRule ^api/(.*)$ api/index.php [QSA,L]
+</IfModule>
+
+# ============ 备注说明 ============
+
+# 本配置文件适用于：
+# 1. Apache 2.4+ 服务器
+# 2. Kangle Web服务器
+# 3. 支持.htaccess的其他Web服务器
+#
+# 注意事项：
+# 1. 某些共享主机可能不支持所有指令
+# 2. 如果遇到500错误，请逐行注释测试
+# 3. 生产环境请关闭错误显示
+# 4. 建议定期检查访问日志
+
+# 最后更新：2024年
+# 系统版本：MVC精简版 v1.0
